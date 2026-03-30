@@ -53,119 +53,54 @@
           </div>
         </div>
 
+        <!-- Loading -->
+        <div v-if="loading" class="loading-container">
+          <n-spin size="large" />
+        </div>
+
         <!-- Pricing Cards -->
-        <div class="pricing-grid">
-          <!-- Free -->
-          <div class="pricing-card">
+        <div v-else class="pricing-grid">
+          <div 
+            v-for="plan in plans" 
+            :key="plan.id" 
+            class="pricing-card"
+            :class="{ featured: plan.code === 'PRO' }"
+          >
             <div class="card-header">
-              <h3>免费</h3>
+              <h3>{{ plan.name }}</h3>
+              <n-tag v-if="plan.originalPrice" type="success" size="small">立省 50%</n-tag>
             </div>
             <div class="price">
-              <span class="amount">$0</span>
+              <span class="amount">${{ plan.price }}</span>
               <span class="period">/月</span>
+              <span v-if="plan.originalPrice" class="original">${{ plan.originalPrice }}/月</span>
             </div>
-            <p class="desc">包括</p>
+            <p class="desc">{{ plan.code === 'FREE' ? '包括' : `包含${getPrevPlanName(plan)}的全部功能，同时：` }}</p>
             <ul class="features">
-              <li>
+              <li v-for="(feature, index) in plan.features" :key="index">
                 <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>为期 2 周的 Pro 试用及 300 Credits</span>
-              </li>
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>有限次代码补全与编码预测</span>
-              </li>
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>有限次对话与智能体请求数</span>
+                <span>{{ feature }}</span>
               </li>
             </ul>
-            <n-button block size="large" class="action-btn secondary">
+            <n-button 
+              v-if="plan.code === 'FREE'" 
+              block 
+              size="large" 
+              class="action-btn secondary"
+            >
               <n-icon :component="DesktopOutline" />
               下载
             </n-button>
-          </div>
-
-          <!-- Pro -->
-          <div class="pricing-card featured">
-            <div class="card-header">
-              <h3>Pro</h3>
-              <n-tag type="success" size="small">立省 50%</n-tag>
-            </div>
-            <div class="price">
-              <span class="amount">$10</span>
-              <span class="period">/月</span>
-              <span class="original">$20/月</span>
-            </div>
-            <p class="desc">包含免费的全部功能，同时：</p>
-            <ul class="features">
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>2,000 Credits</span>
-              </li>
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>更多的对话与智能体请求数</span>
-              </li>
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>Quest 模式和 Repo Wiki 功能</span>
-              </li>
-            </ul>
-            <n-button type="primary" block size="large" class="action-btn">
-              订阅
-            </n-button>
-          </div>
-
-          <!-- Pro+ -->
-          <div class="pricing-card">
-            <div class="card-header">
-              <h3>Pro+</h3>
-              <n-tag type="success" size="small">立省 50%</n-tag>
-            </div>
-            <div class="price">
-              <span class="amount">$30</span>
-              <span class="period">/月</span>
-              <span class="original">$60/月</span>
-            </div>
-            <p class="desc">包含 Pro 的全部功能，同时：</p>
-            <ul class="features">
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>6,000 Credits（总计）</span>
-              </li>
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>优先体验新功能</span>
-              </li>
-            </ul>
-            <n-button block size="large" class="action-btn secondary">
-              订阅
-            </n-button>
-          </div>
-
-          <!-- Ultra -->
-          <div class="pricing-card">
-            <div class="card-header">
-              <h3>Ultra</h3>
-              <n-tag type="success" size="small">立省 50%</n-tag>
-            </div>
-            <div class="price">
-              <span class="amount">$100</span>
-              <span class="period">/月</span>
-              <span class="original">$200/月</span>
-            </div>
-            <p class="desc">包含 Pro 的全部功能，同时：</p>
-            <ul class="features">
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>20,000 Credits（总计）</span>
-              </li>
-              <li>
-                <n-icon :component="CheckmarkCircle" color="#2ADB5C" />
-                <span>优先体验新功能</span>
-              </li>
-            </ul>
-            <n-button block size="large" class="action-btn secondary">
+            <n-button 
+              v-else
+              :type="plan.code === 'PRO' ? 'primary' : undefined"
+              block 
+              size="large" 
+              class="action-btn"
+              :class="{ secondary: plan.code !== 'PRO' }"
+              @click="handleSubscribe(plan)"
+              :loading="subscribing === plan.id"
+            >
               订阅
             </n-button>
           </div>
@@ -182,14 +117,24 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { CheckmarkCircle, DesktopOutline, NotificationsOutline, PersonCircleOutline } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
 import { useUserStore } from '../stores/user'
+import { getPlanList } from '../api/plan'
+import { createOrder } from '../api/order'
 
+const router = useRouter()
 const message = useMessage()
 const userStore = useUserStore()
 
+const plans = ref([])
+const loading = ref(true)
+const subscribing = ref(null)
+
 const userOptions = [
+  { label: '我的订单', key: 'orders' },
   { label: '退出登录', key: 'logout' }
 ]
 
@@ -197,8 +142,64 @@ const handleUserSelect = (key) => {
   if (key === 'logout') {
     userStore.clearUser()
     message.success('已退出登录')
+  } else if (key === 'orders') {
+    router.push('/orders')
   }
 }
+
+const getPrevPlanName = (plan) => {
+  if (plan.code === 'PRO') return '免费'
+  if (plan.code === 'PRO_PLUS') return 'Pro'
+  if (plan.code === 'ULTRA') return 'Pro'
+  return ''
+}
+
+const fetchPlans = async () => {
+  try {
+    const res = await getPlanList()
+    if (res.code === 200) {
+      plans.value = res.data
+    } else {
+      message.error(res.message || '获取套餐列表失败')
+    }
+  } catch (error) {
+    message.error('获取套餐列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSubscribe = async (plan) => {
+  // 检查登录状态
+  if (!userStore.isLoggedIn()) {
+    message.warning('请先登录')
+    router.push('/login')
+    return
+  }
+
+  subscribing.value = plan.id
+
+  try {
+    const res = await createOrder({ planId: plan.id })
+    if (res.code === 200) {
+      // 跳转到支付页面
+      router.push({
+        path: '/payment',
+        query: { orderNo: res.data.orderNo }
+      })
+    } else {
+      message.error(res.message || '创建订单失败')
+    }
+  } catch (error) {
+    message.error('创建订单失败')
+  } finally {
+    subscribing.value = null
+  }
+}
+
+onMounted(() => {
+  fetchPlans()
+})
 </script>
 
 <style scoped>
@@ -317,6 +318,14 @@ const handleUserSelect = (key) => {
   font-size: 14px;
 }
 
+/* Loading */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
 /* Pricing Grid */
 .pricing-grid {
   display: grid;
@@ -332,6 +341,7 @@ const handleUserSelect = (key) => {
   padding: 28px;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* 防止grid子项被内容撑大 */
 }
 
 .pricing-card.featured {
@@ -394,6 +404,12 @@ const handleUserSelect = (key) => {
   font-size: 14px;
   color: #e0e0e0;
   margin-bottom: 12px;
+  word-break: break-word; /* 允许文字换行 */
+}
+
+.features li span {
+  flex: 1;
+  min-width: 0; /* 防止flex子项溢出 */
 }
 
 .features li .n-icon {
