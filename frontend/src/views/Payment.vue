@@ -9,7 +9,7 @@
           </router-link>
         </div>
         <div class="header-right">
-          <n-button text @click="$router.push('/pricing')">返回价格页</n-button>
+          <n-button text @click="$router.push('/')">返回首页</n-button>
         </div>
       </div>
     </header>
@@ -25,7 +25,7 @@
         <div v-else-if="error" class="error-container">
           <n-result status="error" title="加载失败" :description="error">
             <template #footer>
-              <n-button @click="$router.push('/pricing')">返回价格页</n-button>
+              <n-button @click="$router.push('/')">返回首页</n-button>
             </template>
           </n-result>
         </div>
@@ -45,7 +45,7 @@
               </div>
               <div class="order-item total">
                 <span class="label">支付金额</span>
-                <span class="value price">${{ orderInfo?.amount }}</span>
+                <span class="value price">¥{{ orderInfo?.amount }}</span>
               </div>
               <div class="order-item">
                 <span class="label">订单有效期</span>
@@ -101,8 +101,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { TimeOutline } from '@vicons/ionicons5'
 import QRCode from 'qrcode'
-import { getOrderDetail, getOrderStatus, cancelOrder } from '../api/order'
-import { createNativePay } from '../api/pay'
+import { getOrderStatus, cancelOrder } from '../api/payment'
+import { createNativePay } from '../api/payment'
 
 const route = useRoute()
 const router = useRouter()
@@ -139,7 +139,7 @@ const fetchOrderInfo = async () => {
   }
 
   try {
-    const res = await getOrderDetail(orderNo.value)
+    const res = await getOrderStatus(orderNo.value)
     if (res.code === 200) {
       orderInfo.value = res.data
       // 检查订单状态
@@ -147,7 +147,7 @@ const fetchOrderInfo = async () => {
         // 已支付，跳转结果页
         router.replace({
           path: '/pay-result',
-          query: { orderNo: orderNo.value, status: 'success' }
+          query: { orderNo: orderNo.value }
         })
         return
       }
@@ -210,7 +210,7 @@ const startPolling = () => {
         stopPolling()
         router.replace({
           path: '/pay-result',
-          query: { orderNo: orderNo.value, status: 'success' }
+          query: { orderNo: orderNo.value }
         })
       }
     } catch (e) {
@@ -224,7 +224,7 @@ const startPolling = () => {
     if (pollingCountdown.value <= 0) {
       stopPolling()
       message.warning('支付超时，请重新下单')
-      router.push('/pricing')
+      router.push('/')
     }
   }, 1000)
 }
@@ -251,7 +251,7 @@ const checkPayResult = async () => {
         stopPolling()
         router.replace({
           path: '/pay-result',
-          query: { orderNo: orderNo.value, status: 'success' }
+          query: { orderNo: orderNo.value }
         })
       } else {
         message.info('暂未收到支付结果，请稍后再试')
@@ -272,7 +272,7 @@ const cancelPayment = async () => {
     if (res.code === 200) {
       stopPolling()
       message.success('订单已取消')
-      router.push('/pricing')
+      router.push('/')
     } else {
       message.error(res.message || '取消订单失败')
     }

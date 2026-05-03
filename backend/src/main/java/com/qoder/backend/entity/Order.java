@@ -18,11 +18,6 @@ public class Order {
     private String orderNo;
     
     /**
-     * 用户ID
-     */
-    private Long userId;
-    
-    /**
      * 套餐ID
      */
     private Long planId;
