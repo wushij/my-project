@@ -4,8 +4,9 @@
     <header class="header">
       <div class="header-content">
         <div class="logo">
-          <router-link to="/">
-            <img src="https://img.alicdn.com/imgextra/i2/O1CN01js79rH1mt5nkV0kEl_!!6000000005011-55-tps-640-180.svg" alt="Qoder Logo" />
+          <router-link to="/" class="brand-link">
+            <img class="brand-icon" src="/wxpay-icon.svg?v=1" width="32" height="32" alt="" />
+            <span class="brand-text">微信支付演示</span>
           </router-link>
         </div>
         <div class="header-right">
@@ -314,8 +315,28 @@ onUnmounted(() => {
   justify-content: space-between;
 }
 
-.logo img {
-  height: 32px;
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-link:hover .brand-text {
+  color: #2adb5c;
+}
+
+.brand-icon {
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.brand-text {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f1f5f9;
 }
 
 /* Main */
